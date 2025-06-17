@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1"
+  />
+  <title>License Plate Recognition System</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <link rel="stylesheet" href="static/css/index.css" />
+</head>
+<body>
+  <header>
+    <h1>YOLOv9 License Plate Recognition</h1>
+  </header>
+
+  <main class="container">
+    <!-- UPLOAD & LIVE PANEL -->
+    <section class="panel">
+      <h2>Upload Image / Video</h2>
+      <form
+        action="/"
+        method="post"
+        enctype="multipart/form-data"
+        onsubmit="showProcessingMessage()"
+      >
+        <div class="upload-section">
+          <input
+            type="file"
+            name="file"
+            id="file-input"
+            accept="image/*,video/*"
+            required
+          />
+        </div>
+        <button type="submit" id="upload-btn">Upload & Detect</button>
+      </form>
+
+      {% if error %}
+      <div class="error">
+        <i class="fas fa-exclamation-triangle"></i> {{ error }}
+      </div>
+      {% endif %}
+
+      <div style="margin-top:1.5rem;">
+        <h2>Live Detection</h2>
+        <div class="btn-group">
+          <button id="start-live-btn" onclick="startLiveDetection()">
+            <i class="fas fa-play"></i> Start Live
+          </button>
+          <button
+            id="stop-live-btn"
+            onclick="stopLiveDetection()"
+            disabled
+          >
+            <i class="fas fa-stop"></i> Stop Live
+          </button>
+        </div>
+        <div
+          class="live-detection-container"
+          id="live-detection-container"
+        >
+          <div
+            class="detection-status status-active"
+            id="detection-status"
+          >
+            <i class="fas fa-circle"></i> Live detection is active…
+          </div>
+          <div class="media-container">
+            <img
+              id="live-stream"
+              class="live-stream-img"
+              src=""
+              alt="Live Stream"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <h3>Manual Camera Capture</h3>
+        <div class="btn-group">
+          <button onclick="startCamera()">
+            <i class="fas fa-camera"></i> Start Camera
+          </button>
+          <button onclick="stopCamera()">
+            <i class="fas fa-camera-slash"></i> Stop Camera
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS PANEL -->
+    <section class="panel">
+      <h2>Detection Results</h2>
+      <div class="result-container">
+        {% if content_type=='image' and image_path %}
+          <div class="media-container">
+            <img src="{{ image_path }}" alt="Result Image" />
+          </div>
+          <div class="result-success">
+            <i class="fas fa-check-circle"></i>
+            Image detection completed successfully!
+          </div>
+        {% elif content_type=='video' and video_path %}
+          <div class="media-container">
+            <video
+              class="responsive-video"
+              controls
+              autoplay
+              muted
+              onerror="videoError(this)"
+              onloadstart="videoLoadStart()"
+              oncanplay="videoCanPlay()"
+            >
+              <source src="{{ video_path }}" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+          <div class="result-success">
+            <i class="fas fa-check-circle"></i>
+            Video detection completed successfully!
+          </div>
+        {% else %}
+          <div class="result-placeholder" id="result-placeholder">
+            <div id="placeholder-content">
+              <i class="fas fa-image"></i>
+              <p>Result will appear here</p>
+            </div>
+            <div id="processing-content">
+              <i class="fas fa-spinner"></i>
+              <p id="processing-text">Processing...</p>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div id="live-video-container">
+        <h3>Manual Camera Feed</h3>
+        <video id="live-video" autoplay muted></video>
+        <div class="video-controls">
+          <button onclick="captureFrame()">
+            <i class="fas fa-camera"></i> Capture Frame
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="static/js/index.js"></script>
+</body>
+</html>

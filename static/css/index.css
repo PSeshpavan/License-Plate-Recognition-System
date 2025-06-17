@@ -1,0 +1,171 @@
+/* 1. Reset & box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 2. Base page styles */
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f7f9fc;
+  color: #333;
+}
+header {
+  background: #111;
+  color: #fff;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* 3. Two-column responsive layout */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.panel {
+  flex: 1 1 400px;
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* 4. Headings */
+h2 { font-size: 1.5rem; margin-bottom: 1rem; }
+h3 { font-size: 1.25rem; margin-top: 1.5rem; }
+
+/* 5. Upload form */
+.upload-section { margin-bottom: 1rem; }
+input[type="file"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* 6. Buttons */
+button {
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+button:hover:not(:disabled) { background: #0056b3; }
+button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* 7. Flex groups */
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* 8. Media containers */
+.media-container {
+  width: 100%;
+  margin: 1rem 0;
+  text-align: center;
+}
+.media-container img,
+.media-container video,
+.responsive-video,
+.live-stream-img {
+  width: 100%;
+  height: auto;
+  max-height: 500px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+/* 9. Placeholder & processing */
+.result-placeholder {
+  width: 100%;
+  height: 300px;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+#processing-content { display: none; }
+.fa-spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 10. Status messages */
+.error {
+  background: #f8d7da;
+  color: #dc3545;
+  border: 1px solid #f5c6cb;
+  border-radius: 5px;
+  padding: 0.75rem;
+  margin: 1rem 0;
+}
+.result-success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  border-radius: 5px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* 11. Live detection */
+.live-detection-container {
+  display: none;
+  margin-top: 1rem;
+  border: 2px solid #007bff;
+  border-radius: 10px;
+  padding: 1rem;
+  background: #f8f9fa;
+}
+.live-detection-active { display: block; }
+.detection-status {
+  padding: 0.5rem;
+  border-radius: 5px;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+.status-active {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+/* 12. Manual camera feed */
+#live-video-container {
+  display: none;
+  margin-top: 1rem;
+}
+.video-controls button {
+  background: #28a745;
+}
+.video-controls button:hover {
+  background: #218838;
+}
+
+/* 13. Responsive breakpoints */
+@media (max-width: 768px) {
+  .container { flex-direction: column; padding: 1rem; }
+  .panel { flex: 1 1 100%; }
+  h2 { font-size: 1.25rem; }
+  button { font-size: 0.9rem; padding: 0.6rem; }
+}
