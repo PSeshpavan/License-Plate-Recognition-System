@@ -15,4 +15,3 @@ python-box
 numpy
 torch
 torchvision
-cv2
