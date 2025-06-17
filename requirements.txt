@@ -13,5 +13,7 @@ easyocr==1.7.0
 ultralytics==8.0.114
 mlflow
 python-box
-
-
+numpy
+torch
+PIL
+cv2
