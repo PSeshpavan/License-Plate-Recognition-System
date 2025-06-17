@@ -1,19 +1,7 @@
-pandas==1.5.3
-numpy==1.24.4
-matplotlib==3.7.1
-seaborn==0.13.2
-scikit-learn==1.2.2
-scipy==1.10.1
-joblib==1.4.2
-tensorflow==2.16.1
-filterpy==1.4.5
 
-mlflow==2.22.0
-dvc==3.50.0
 flask==3.1.1
 flask-cors==4.0.0
 notebook==6.5.4
-python-box==6.1.0
 tqdm==4.65.0
 ensure==1.0.0
 ultralytics==8.0.114
@@ -23,7 +11,6 @@ opencv-python==4.7.0.72
 ipykernel==6.22.0
 easyocr==1.7.0
 ultralytics==8.0.114
-dvc 
 mlflow
 python-box
 
