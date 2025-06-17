@@ -14,5 +14,5 @@ mlflow
 python-box
 numpy
 torch
-PIL
+torchvision
 cv2
