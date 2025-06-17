@@ -1,16 +1,15 @@
 
-flask==3.1.1
-flask-cors==4.0.0
-notebook==6.5.4
-tqdm==4.65.0
-ensure==1.0.0
-ultralytics==8.0.114
-PyYAML==6.0.1
-types-PyYAML==6.0.12.20240311
-opencv-python==4.7.0.72
-ipykernel==6.22.0
-easyocr==1.7.0
-ultralytics==8.0.114
+flask
+flask-cors
+notebook
+tqdm
+ensure
+ultralytics
+PyYAML
+types-PyYAML
+opencv-python
+ipykernel
+easyocr
 mlflow
 python-box
 numpy
