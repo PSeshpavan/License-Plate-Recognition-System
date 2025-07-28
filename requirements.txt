@@ -18,4 +18,3 @@ pymongo[srv]
 dotenv
 gunicorn
 
--e .
