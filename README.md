@@ -27,14 +27,10 @@ A Python-based License Plate Recognition (LPR) system leveraging deep learning f
 ├── setup.py                    # Package setup
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # Project documentation
-├── data/                       # Dataset directory
-│   ├── annotated data/         # Labeled data for training/validation/testing
-│   └── raw data/               # Raw, unprocessed data
 ├── notebooks/                  # Jupyter notebooks for experiments
 ├── runs/                       # YOLO detection outputs
 ├── static/                     # Static files (CSS, JS, processed videos)
 ├── templates/                  # HTML templates for Flask
-├── uploads/                    # Uploaded images/videos for inference
 ├── weights/                    # Trained model weights
 └── ...
 ```
@@ -80,21 +76,6 @@ python app.py
 
 - Uploaded images/videos will get saved in `uploads/` directory
 - Results and processed files will appear in `static/processed_videos/`
-
-## Data
-
-- Annotated datasets are in `data/annotated data/` ([README.dataset.txt](data/annotated%20data/README.dataset.txt), [README.roboflow.txt](data/annotated%20data/README.roboflow.txt))
-- Training, validation, and test splits are organized under `train/`, `valid/`, and `test/`
-- Data configuration: [data.yaml](data/annotated%20data/data.yaml)
-
-## Training
-
-- Model training scripts and pipelines are located in `src/License_Plate_Recognition_System/pipeline/`
-- Use the provided notebooks ([01_data_ingestion.ipynb](notebooks/01_data_ingestion.ipynb), [02_base_model.ipynb](notebooks/02_base_model.ipynb), etc.) for step-by-step training and evaluation
-
-## Evaluation
-
-- Evaluate model performance using the scripts in `src/License_Plate_Recognition_System/components/` and the evaluation notebook ([04_model_evaluation.ipynb](notebooks/04_model_evaluation.ipynb))
 
 ## Web Application
 
