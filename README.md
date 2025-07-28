@@ -11,7 +11,6 @@ A Python-based License Plate Recognition (LPR) system leveraging deep learning f
 - [Web Application](#web-application)
 - [Notebooks](#notebooks)
 - [Contributing](#contributing)
-- [License](#license)
 
 ---
 
@@ -88,7 +87,3 @@ python app.py
 ## Contributing
 
 Contributions are welcome! Please open issues or submit pull requests for improvements.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
