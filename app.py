@@ -6,6 +6,7 @@ from PIL import Image
 import cv2
 import numpy as np
 import torch
+import tempfile 
 from flask import (
     Flask, render_template, request,
     send_from_directory, url_for, Response
@@ -13,6 +14,9 @@ from flask import (
 from werkzeug.utils import secure_filename
 from ultralytics import YOLO
 import easyocr
+
+# ─── INTERNAL UTILS ─────────────────────────────────────────────────────────────
+from mongo.db_utils import put_file, get_bytes, get_gridout
 
 # ─── OCR CONFIG ─────────────────────────────────────────────────────────────────────
 
@@ -28,7 +32,7 @@ app = Flask(__name__)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[INFO] Using device: {DEVICE}")
 
-model = YOLO("./weights/best-ul-9c.pt").to(DEVICE)
+model = YOLO("./weights/best-ul-11l.pt").to(DEVICE)
 if DEVICE == "cuda":
     model.model.half()   # half precision speeds it up ~2×
 print("[INFO] YOLO loaded.")
@@ -104,42 +108,70 @@ def predict():
         if not f.filename:
             return render_template("index.html", error="No file selected")
 
-        UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        in_path = os.path.join(UPLOAD_DIR, secure_filename(f.filename))
-        f.save(in_path)
+        # upload locally 
+        # UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+        # os.makedirs(UPLOAD_DIR, exist_ok=True)
+        # in_path = os.path.join(UPLOAD_DIR, secure_filename(f.filename))
+        # f.save(in_path)
+        
+        # store ORIGINAL upload in GridFS
+        filename = secure_filename(f.filename)
+        ext = filename.rsplit(".", 1)[1].lower()
+        
+        original_id = put_file(f.read(), filename=filename, content_type=f.mimetype, kind="original")
+        print(f"[INFO] File stored in GridFS with ID {original_id}")
+        
 
-        ext = f.filename.rsplit(".", 1)[1].lower()
+        # ext = f.filename.rsplit(".", 1)[1].lower()
 
         # ── IMAGE CASE ────────────────────────────────────────────────────────────
         if ext in ("jpg","jpeg","png"):
-            img = cv2.imread(in_path)
+            # img = cv2.imread(in_path)
+            img = cv2.imdecode(np.frombuffer(get_bytes(original_id), np.uint8), cv2.IMREAD_COLOR)
+            
             if img is None:
                 return render_template("index.html", error="Failed to load image")
 
             out = process_frame(img)
-            out_dir = os.path.join("runs","detect", f"exp_{int(time.time())}")
-            os.makedirs(out_dir, exist_ok=True)
-            out_file = os.path.join(out_dir, secure_filename(f.filename))
-            cv2.imwrite(out_file, out)
+            # out_dir = os.path.join("runs","detect", f"exp_{int(time.time())}")
+            # os.makedirs(out_dir, exist_ok=True)
+            # out_file = os.path.join(out_dir, secure_filename(f.filename))
+            # cv2.imwrite(out_file, out)
 
-            image_url = url_for("serve_image",
-                                subfolder=os.path.basename(out_dir),
-                                filename=os.path.basename(out_file))
-            return render_template("index.html",
-                                   content_type="image",
-                                   image_path=image_url)
+            # image_url = url_for("serve_image",
+            #                     subfolder=os.path.basename(out_dir),
+            #                     filename=os.path.basename(out_file))
+            # return render_template("index.html",
+            #                        content_type="image",
+            #                        image_path=image_url)
+            
+            
+            ok, buf = cv2.imencode(".jpg", out)
+            if not ok:
+                return render_template("index.html", error="Encoding failed")
+            
+            processed_id = put_file(buf.tobytes(), filename="processed_" + filename, content_type="image/jpeg", source=original_id)
+            return render_template("index.html", content_type="image", image_path=url_for("serve_file", file_id=processed_id))
 
         # ── VIDEO CASE ────────────────────────────────────────────────────────────
         elif ext == "mp4":
-            cap = cv2.VideoCapture(in_path)
+            # cap = cv2.VideoCapture(in_path)
+            # if not cap.isOpened():
+            #     return render_template("index.html", error="Failed to open video")
+            
+            # OpenCV requires a local file – round‑trip via tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp_in:
+                tmp_in.write(get_bytes(original_id))
+                tmp_in_path = tmp_in.name
+
+            cap = cv2.VideoCapture(tmp_in_path)
             if not cap.isOpened():
+                os.unlink(tmp_in_path)
                 return render_template("index.html", error="Failed to open video")
 
             w   = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h   = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = cap.get(cv2.CAP_PROP_FPS) or 20.0
-
             scale = TARGET_WIDTH / float(w)
             th    = int(h * scale)
 
@@ -174,26 +206,46 @@ def predict():
             cap.release()
             writer.release()
 
-            video_url = url_for("static",
-                                filename=f"processed_videos/{output_name}")
-            return render_template("index.html",
-                                   content_type="video",
-                                   video_path=video_url)
+        #     video_url = url_for("static",
+        #                         filename=f"processed_videos/{output_name}")
+        #     return render_template("index.html",
+        #                            content_type="video",
+        #                            video_path=video_url)
+
+        # else:
+        #     return render_template("index.html",
+        #                            error="Unsupported file format")
+        
+            processed_bytes = open(output_path, "rb").read()
+            processed_id = put_file(processed_bytes, filename="processed_" + filename, content_type="video/mp4", source=original_id)
+            os.unlink(tmp_in_path)
+            os.unlink(output_path)
+            return render_template("index.html", content_type="video", video_path=url_for("serve_file", file_id=processed_id))
 
         else:
-            return render_template("index.html",
-                                   error="Unsupported file format")
+            return render_template("index.html", error="Unsupported file format")
 
     return render_template("index.html")
 
 # ─── ROUTE: SERVE IMAGE ─────────────────────────────────────────────────────────
 
-@app.route("/runs/detect/<subfolder>/<filename>")
-def serve_image(subfolder, filename):
-    return send_from_directory(
-        os.path.join("runs","detect",subfolder),
-        filename
-    )
+# @app.route("/runs/detect/<subfolder>/<filename>")
+# def serve_image(subfolder, filename):
+#     return send_from_directory(
+#         os.path.join("runs","detect",subfolder),
+#         filename
+#     )
+
+@app.route("/file/<file_id>")
+def serve_file(file_id):
+    try:
+        fp = get_gridout(file_id)
+        return Response(fp.read(), mimetype=fp.content_type, headers={
+            "Content-Disposition": f"inline; filename={fp.filename}"
+        })
+    except Exception as exc:
+        return Response(f"Error: {exc}", status=404)
+
 
 # ─── ROUTE: LIVE WEBCAM FEED ────────────────────────────────────────────────────
 
@@ -223,8 +275,8 @@ def webcam_feed():
                 last = process_frame(small)
 
             # encode JPEG
-            ret2, buf = cv2.imencode('.jpg', last)
-            if not ret2:
+            ok, buf = cv2.imencode('.jpg', last)
+            if not ok:
                 continue
 
             yield (b'--frame\r\n'
@@ -241,8 +293,8 @@ if __name__ == "__main__":
     p.add_argument("--port", type=int, default=5000)
     args = p.parse_args()
 
-    os.makedirs("uploads", exist_ok=True)
-    os.makedirs(os.path.join("static","processed_videos"), exist_ok=True)
-    os.makedirs(os.path.join("runs","detect"), exist_ok=True)
+    # os.makedirs("uploads", exist_ok=True)
+    # os.makedirs(os.path.join("static","processed_videos"), exist_ok=True)
+    # os.makedirs(os.path.join("runs","detect"), exist_ok=True)
 
     app.run(host="0.0.0.0", port=args.port, debug=False)
