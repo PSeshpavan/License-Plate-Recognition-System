@@ -16,7 +16,7 @@ from ultralytics import YOLO
 import easyocr
 
 # ─── INTERNAL UTILS ─────────────────────────────────────────────────────────────
-from mongo.db_utils import put_file, get_bytes, get_gridout
+from mongo.db_utils import put_file, get_bytes, get_gridout, mongo_connection
 
 # ─── OCR CONFIG ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +26,7 @@ MIN_CONFIDENCE = 0.5
 # ─── APP SETUP ─────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
+mongo_connection()
 
 # ─── MODEL & OCR INIT ────────────────────────────────────────────────────────────
 
@@ -290,7 +291,7 @@ def webcam_feed():
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--port", type=int, default=5000)
+    p.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)))
     args = p.parse_args()
 
     # os.makedirs("uploads", exist_ok=True)

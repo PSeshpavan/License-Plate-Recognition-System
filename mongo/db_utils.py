@@ -10,12 +10,20 @@ dotenv.load_dotenv()
 
 
 # ── Mongo connection settings ──────────────────────────────────────────────
-MONGO_URI: str = os.getenv("MONGO_URI")
-DATABASE_NAME: str   = os.getenv("DATABASE_NAME")
+def mongo_connection():
+    """Initialize MongoDB connection."""
+    mongo_uri = os.getenv("MONGO_URI")
+    database_name = os.getenv("DATABASE_NAME")
+    
+    if not mongo_uri or not database_name:
+        raise ValueError("MONGO_URI and DATABASE_NAME must be set in environment variables.")
+    
+    client = MongoClient(mongo_uri)
+    db = client[database_name]
+    fs = gridfs.GridFS(db)
+    
+    return client, db, fs
 
-_client = MongoClient(MONGO_URI)
-_db     = _client[DATABASE_NAME]
-_fs     = gridfs.GridFS(_db)
 
 # ── Public helpers ─────────────────────────────────────────────────────────
 def put_file(data: bytes, *, filename: str, content_type: str, **metadata: Any) -> str:
