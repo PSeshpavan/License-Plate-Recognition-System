@@ -23,9 +23,9 @@ A Python-based License Plate Recognition (LPR) system leveraging deep learning f
 ├── setup.py                    # Package setup
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # Project documentation
+├── mongo/                      # MongoDB integration for file storage
 ├── notebooks/                  # Jupyter notebooks for experiments
-├── runs/                       # YOLO detection outputs
-├── static/                     # Static files (CSS, JS, processed videos)
+├── static/                     # Static files (CSS, JS)
 ├── templates/                  # HTML templates for Flask
 ├── weights/                    # Trained model weights
 └── ...
@@ -70,8 +70,8 @@ python app.py
 
 ### Inference
 
-- Uploaded images/videos will get saved in `uploads/` directory
-- Results and processed files will appear in `static/processed_videos/`
+- Uploaded images/videos will get saved directly in the MongoDB database
+- The processed results will be displayed on the web interface in real-time by fetching files from MongoDB database
 
 ## Web Application
 
