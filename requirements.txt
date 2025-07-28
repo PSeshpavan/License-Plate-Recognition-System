@@ -17,3 +17,5 @@ torchvision
 pymongo[srv]
 dotenv
 gunicorn
+
+-e .
