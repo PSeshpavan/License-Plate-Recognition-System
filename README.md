@@ -34,7 +34,7 @@ A Python-based License Plate Recognition (LPR) system leveraging deep learning f
 ## Features
 
 - Automatic detection and recognition of license plates in images, videos, live stream
-- Deep learning-based detection using YOLOv9
+- Deep learning-based detection using YOLOv11
 - Web interface for uploading images/videos and viewing results
 - Modular codebase for easy extension and experimentation
 
@@ -81,7 +81,7 @@ python app.py
 
 ## Notebooks
 
-- [License Plate Recognition System.ipynb](notebooks/License%20Plate%20Recognition%20System.ipynb): End-to-end workflow
+- [License Plate Recognition System.ipynb](notebooks/License%20Plate%20Recognition%20System.ipynb): End-to-end workflow using Yolov11 for license plate detection and recognition
 - [Ultralytics Yolov9.ipynb](notebooks/Ultralytics%20Yolov9.ipynb): YOLOv9 experiments using Yolov9
 
 ## Contributing
