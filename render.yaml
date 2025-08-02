@@ -10,7 +10,7 @@ services:
       pip install --upgrade pip
       pip install -r requirements.txt
     startCommand: >
-      gunicorn app:app --threads 4 --bind 0.0.0.0:$PORT --timeout 120
+      gunicorn app:app --workers 1 --threads 1 --bind 0.0.0.0:$PORT --timeout 120
     healthCheckPath: /healthz
     envVars:
       - key: MONGO_URI

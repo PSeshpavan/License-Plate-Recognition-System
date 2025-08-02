@@ -193,7 +193,11 @@ def webcam_feed():
                    + b'\r\n')   
             
     return Response(gen(),mimetype='multipart/x-mixed-replace; boundary=frame')
-            
+        
+        
+@app.route("/healthz")
+def healthz():
+    return "OK", 200    
             
 # ─── MAIN ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
