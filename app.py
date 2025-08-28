@@ -55,7 +55,12 @@ def get_reader():
     print("[INFO] Loading EasyOCR...")
     gc.collect()
     import easyocr
-    reader = easyocr.Reader(["en"], gpu=(DEVICE == "cuda"), download_enabled=True)
+    reader = easyocr.Reader(
+    ["en"],
+    gpu=(DEVICE == "cuda"),
+    download_enabled=False,                     # don't try to fetch at runtime
+    model_storage_directory=os.environ.get("EASYOCR_DIR", "/app/.easyocr")
+)
     print("[INFO] EasyOCR loaded.")
     gc.collect()
     return reader

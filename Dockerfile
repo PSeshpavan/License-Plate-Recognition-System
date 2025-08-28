@@ -1,37 +1,57 @@
 FROM python:3.11-slim AS app
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    TORCH_HOME=/tmp \
-    YOLO_CONFIG_DIR=/tmp \
-    EASYOCR_MODULE_PATH=/tmp \
-    HF_HOME=/tmp \
-    OMP_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1
-
-# minimal runtime libs
+# --- system deps (minimal for OpenCV headless etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 libfontconfig1 libgl1 wget \
+    libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 libgthread-2.0-0 \
+    libfontconfig1 libgl1-mesa-dev libglib2.0-dev wget ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install torch CPU wheels from official index (compatible with py3.11)
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
-      torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
+# --- env
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HF_HOME=/app/.cache/hf \
+    TORCH_HOME=/app/.cache/torch \
+    YOLO_CONFIG_DIR=/app/.cache/ultralytics \
+    # where we will bake EasyOCR models:
+    EASYOCR_DIR=/app/.easyocr
 
-# Now the rest
+# create caches + ocr dir (persisted in image)
+RUN mkdir -p $HF_HOME $TORCH_HOME $YOLO_CONFIG_DIR $EASYOCR_DIR
+
+# copy deps and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && pip cache purge
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-# App
+# copy app code (including your pre-trained YOLO weights under /app/weights)
 COPY . .
-RUN mkdir -p weights /tmp
 
-# (Optional) Pre-pull EasyOCR models
-RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False, download_enabled=True)" || echo "EasyOCR pre-download failed, will download at runtime"
+# ---- PRELOAD MODELS AT BUILD TIME ----
+# 1) Ensure YOLO can load your local weights (no net download needed)
+#    This just imports the model once so Ultralytics writes its settings file.
+RUN python - <<'PY'
+from ultralytics import YOLO
+from pathlib import Path
+w = Path('weights') / 'best-ul-11l.pt'  # keep this name to match app.py
+assert w.exists(), f"Missing weights at {w}"
+# Load once on CPU (this does NOT download anything if weights are local)
+_ = YOLO(str(w))
+print("YOLO weights present and loadable.")
+PY
 
+# 2) Download EasyOCR detection/recognition models into /app/.easyocr
+RUN python - <<'PY'
+import easyocr, os
+target = os.environ.get("EASYOCR_DIR", "/app/.easyocr")
+reader = easyocr.Reader(['en'], gpu=False, download_enabled=True,
+                        model_storage_directory=target)
+print("EasyOCR models downloaded to:", target)
+PY
+
+# expose port for Render
 EXPOSE 5000
-CMD ["gunicorn","--bind","0.0.0.0:5000","--workers","1","--timeout","300","--max-requests","50","--max-requests-jitter","10","--preload","app:app"]
+
+# gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "300", "--max-requests", "50", "--max-requests-jitter", "10","--preload", "app:app"]
