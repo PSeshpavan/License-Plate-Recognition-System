@@ -4,6 +4,7 @@ import time
 import tempfile
 from pathlib import Path
 from functools import lru_cache
+import gc
 
 from PIL import Image  # noqa: F401 (still required by YOLO internals)
 import cv2
@@ -30,6 +31,12 @@ MIN_CONFIDENCE = 0.5   # YOLO score threshold
 # ─── APP SETUP ────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 mongo_connection()
+
+
+# Production configuration
+if os.environ.get('RENDER'):
+    # Disable OpenCV GUI functions for headless deployment
+    os.environ['OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS'] = '0'
 
 # ─── MODEL & OCR INIT (lazy) ──────────────────────────────────────────────────
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -80,6 +87,14 @@ def process_frame(frame: np.ndarray) -> np.ndarray:
             ty = y1 - 10
         cv2.rectangle(frame, (tx - 2, ty - th - 2), (tx + tw + 2, ty + 2), (0, 0, 0), -1)
         cv2.putText(frame, text, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, lineType=cv2.LINE_AA)
+        
+    # Clear GPU cache if using CUDA
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    
+    # Force garbage collection
+    gc.collect()
+           
     return frame
 
 # ─── ROUTES ───────────────────────────────────────────────────────────────────
@@ -201,18 +216,17 @@ def healthz():
             
 # ─── MAIN ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    import argparse, os
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.environ.get("PORT", 5000))  # picks $PORT on Render, 5000 locally
+        default=int(os.environ.get("PORT", 5000))
     )
     args = parser.parse_args()
-
-    # optional scratch dirs
-    # os.makedirs("uploads", exist_ok=True)
-    # os.makedirs(os.path.join("static", "processed_videos"), exist_ok=True)
-
-    app.run(host="0.0.0.0", port=args.port, debug=False)
+    
+    # Use gunicorn in production, flask dev server locally
+    if os.environ.get('RENDER'):
+        # This won't be called in production (gunicorn handles it)
+        pass
+    else:
+        app.run(host="0.0.0.0", port=args.port, debug=False)
