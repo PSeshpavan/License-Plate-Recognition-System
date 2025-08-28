@@ -1,8 +1,13 @@
+# web
 Flask==2.3.3
-ultralytics==8.0.196
+gunicorn==21.2.0
+
+# vision stack
+ultralytics==8.3.70       
 opencv-python-headless==4.8.1.78
+numpy<2                    
+
+# OCR / DB / env
 easyocr==1.7.1
 pymongo[srv]==4.6.1
-gunicorn==21.2.0
 python-dotenv==1.0.1
-numpy<2

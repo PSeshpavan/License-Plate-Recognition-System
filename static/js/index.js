@@ -1,6 +1,7 @@
+let liveStreamActive = false;
 let cameraStream = null;
-let liveDetectionActive = false;
-
+let inferLoopTimer = null;
+let inflight = false; // avoid overlapping /infer_frame calls
 
 function showProcessingMessage() {
   const fileInput = document.getElementById("file-input");
@@ -42,54 +43,100 @@ function resetFormState() {
 
 document.addEventListener("DOMContentLoaded", () => {
   resetFormState();
-  if (liveDetectionActive) stopLiveDetection();
+  if (liveStreamActive) stopLiveDetection();
 });
 window.addEventListener("beforeunload", () => {
-  if (liveDetectionActive) stopLiveDetection();
+  if (liveStreamActive) stopLiveDetection();
 });
 
 function startLiveDetection() {
   const liveContainer = document.getElementById("live-detection-container");
-  const liveStream = document.getElementById("live-stream");
   const startBtn = document.getElementById("start-live-btn");
   const stopBtn = document.getElementById("stop-live-btn");
-  if (!liveContainer || !liveStream) return;
+  const cam = document.getElementById("cam");
+  const img = document.getElementById("live-stream");
+  if (!liveContainer || !cam || !img) return;
 
-  liveContainer.classList.add("live-detection-active");
-  liveStream.src = "/webcam_feed";
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  liveDetectionActive = true;
+  navigator.mediaDevices.getUserMedia({ video: { width: 640 }, audio: false })
+    .then(stream => {
+      cameraStream = stream;
+      cam.srcObject = stream;
+      liveContainer.classList.add("live-detection-active");
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      liveStreamActive = true;
 
-  liveStream.onerror = () => {
-    showError(
-      "Failed to connect to webcam feed. Make sure your camera is available."
-    );
-    stopLiveDetection();
-  };
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      const tick = async () => {
+        if (!liveStreamActive || !cam.videoWidth || inflight) return;
+        inflight = true;
+        try {
+          const w = cam.videoWidth, h = cam.videoHeight;
+          canvas.width = w; canvas.height = h;
+          ctx.drawImage(cam, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+
+          const res = await fetch("/infer_frame", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: dataUrl })
+          });
+
+          if (!res.ok) throw new Error("Inference error");
+          const blob = await res.blob();
+          const objURL = URL.createObjectURL(blob);
+          img.onload = () => URL.revokeObjectURL(objURL);
+          img.src = objURL;
+        } catch (err) {
+          console.error(err);
+          stopLiveDetection();
+          alert("Live detection stopped: " + err.message);
+        } finally {
+          inflight = false;
+        }
+      };
+
+      // modest FPS for CPU hosts
+      inferLoopTimer = setInterval(tick, 150);
+    })
+    .catch(err => {
+      console.error("Camera error:", err);
+      alert("Camera access denied or unsupported");
+    });
 }
 
 function stopLiveDetection() {
   const liveContainer = document.getElementById("live-detection-container");
-  const liveStream = document.getElementById("live-stream");
   const startBtn = document.getElementById("start-live-btn");
   const stopBtn = document.getElementById("stop-live-btn");
-  if (!liveContainer || !liveStream) return;
+  const img = document.getElementById("live-stream");
+  if (!liveContainer) return;
+
+  if (inferLoopTimer) clearInterval(inferLoopTimer);
+  inferLoopTimer = null;
+  liveStreamActive = false;
+
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  if (img) img.src = "";
 
   liveContainer.classList.remove("live-detection-active");
-  liveStream.src = "";
   startBtn.disabled = false;
   stopBtn.disabled = true;
-  liveDetectionActive = false;
 }
 
+/* Manual camera capture (single-frame upload to "/") */
 function startCamera() {
   const video = document.getElementById("live-video");
   const container = document.getElementById("live-video-container");
   if (!video || !navigator.mediaDevices) return;
 
   navigator.mediaDevices
-    .getUserMedia({ video: { facingMode: "environment" } })
+    .getUserMedia({ video: { facingMode: "environment" }, audio: false })
     .then((stream) => {
       cameraStream = stream;
       video.srcObject = stream;
@@ -97,7 +144,7 @@ function startCamera() {
     })
     .catch((err) => {
       console.error("Camera error:", err);
-      showError("Camera access denied or unsupported");
+      alert("Camera access denied or unsupported");
     });
 }
 
@@ -127,7 +174,7 @@ function captureFrame() {
         .then((html) => (document.body.innerHTML = html))
         .catch((err) => {
           console.error("Upload error:", err);
-          showError("Failed to process captured frame");
+          alert("Failed to process captured frame");
         })
         .finally(() => {
           stopCamera();
@@ -138,12 +185,7 @@ function captureFrame() {
   );
 }
 
-function videoError(v) {
-  alert("Video playback error.");
-}
-function videoLoadStart() {
-  console.log("Video loading…");
-}
-function videoCanPlay() {
-  console.log("Video ready to play");
-}
+/* Video helpers */
+function videoError() { alert("Video playback error."); }
+function videoLoadStart() { console.log("Video loading…"); }
+function videoCanPlay() { console.log("Video ready to play"); }

@@ -4,18 +4,18 @@
   <meta charset="UTF-8" />
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1"
+    content="width=device-width, initial-scale=1, maximum-scale=1"
   />
   <title>License Plate Recognition System</title>
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
   />
-  <link rel="stylesheet" href="static/css/index.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" />
 </head>
 <body>
   <header>
-    <h1>YOLOv9 License Plate Recognition</h1>
+    <h1>YOLOv11 License Plate Recognition</h1>
   </header>
 
   <main class="container">
@@ -52,31 +52,22 @@
           <button id="start-live-btn" onclick="startLiveDetection()">
             <i class="fas fa-play"></i> Start Live
           </button>
-          <button
-            id="stop-live-btn"
-            onclick="stopLiveDetection()"
-            disabled
-          >
+          <button id="stop-live-btn" onclick="stopLiveDetection()" disabled>
             <i class="fas fa-stop"></i> Stop Live
           </button>
         </div>
-        <div
-          class="live-detection-container"
-          id="live-detection-container"
-        >
-          <div
-            class="detection-status status-active"
-            id="detection-status"
-          >
+
+        <div class="live-detection-container" id="live-detection-container">
+          <div class="detection-status status-active" id="detection-status">
             <i class="fas fa-circle"></i> Live detection is active…
           </div>
+
+          <!-- Hidden capture <video> fed by getUserMedia -->
+          <video id="cam" autoplay playsinline muted style="display:none"></video>
+
           <div class="media-container">
-            <img
-              id="live-stream"
-              class="live-stream-img"
-              src=""
-              alt="Live Stream"
-            />
+            <!-- Annotated frames returned by /infer_frame -->
+            <img id="live-stream" class="live-stream-img" src="" alt="Live Stream" />
           </div>
         </div>
       </div>
@@ -151,6 +142,6 @@
     </section>
   </main>
 
-  <script src="static/js/index.js"></script>
+  <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>
 </html>
