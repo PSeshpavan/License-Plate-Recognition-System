@@ -34,6 +34,20 @@ print(f"[INFO] Using device: {DEVICE}")
 # Path to your YOLOv11 weights (ensure this file is baked into the image)
 WEIGHT_PATH = Path(__file__).parent / "weights" / "best-ul-11l.pt"
 
+
+# ──── YOLOv9 'C3k2' compatibility shim ─────────────────────────────────────────
+try:
+    from ultralytics.nn.modules import block as _ultra_block
+    if not hasattr(_ultra_block, "C3k2"):
+        # Map C3k2 -> C2f so torch.load can unpickle v9 checkpoints
+        class C3k2(_ultra_block.C2f):  # type: ignore
+            pass
+        _ultra_block.C3k2 = C3k2
+        print("[INFO] Registered C3k2 shim (alias of C2f).")
+except Exception as e:
+    print("[WARN] Could not register C3k2 shim:", e)
+
+
 # ─── LAZY LOADERS ─────────────────────────────────────────────────────────────
 @lru_cache(maxsize=1)
 def get_model():
