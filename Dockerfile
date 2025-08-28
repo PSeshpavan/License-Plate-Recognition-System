@@ -1,57 +1,69 @@
-FROM python:3.11-slim AS app
+# ========= Base image =========
+FROM python:3.11-slim
 
-# --- system deps (minimal for OpenCV headless etc.)
+# ========= Environment =========
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    # Where EasyOCR models will live (baked at build time)
+    EASYOCR_DIR=/app/.easyocr \
+    # Ensure Ultralytics cache stays inside the image/container
+    ULTRALYTICS_CACHE_DIR=/app/.cache/ultralytics
+
+# ========= System deps (for OpenCV, ffmpeg encoding, etc.) =========
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 libgthread-2.0-0 \
-    libfontconfig1 libgl1-mesa-dev libglib2.0-dev wget ca-certificates \
+    build-essential \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
  && rm -rf /var/lib/apt/lists/*
 
+# ========= Workdir =========
 WORKDIR /app
 
-# --- env
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    HF_HOME=/app/.cache/hf \
-    TORCH_HOME=/app/.cache/torch \
-    YOLO_CONFIG_DIR=/app/.cache/ultralytics \
-    # where we will bake EasyOCR models:
-    EASYOCR_DIR=/app/.easyocr
-
-# create caches + ocr dir (persisted in image)
-RUN mkdir -p $HF_HOME $TORCH_HOME $YOLO_CONFIG_DIR $EASYOCR_DIR
-
-# copy deps and install
-COPY requirements.txt .
+# ========= Python deps =========
+# Use CPU-only PyTorch wheels to avoid pulling heavy CUDA packages.
 RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt
+ && pip install --no-cache-dir \
+    "torch==2.3.1" "torchvision==0.18.1" --index-url https://download.pytorch.org/whl/cpu \
+ && pip install --no-cache-dir \
+    Flask==2.3.3 \
+    gunicorn==21.2.0 \
+    ultralytics==8.2.103 \
+    easyocr==1.7.1 \
+    numpy==1.26.4 \
+    opencv-python-headless==4.9.0.80 \
+    pillow==11.3.0 \
+    pymongo==4.7.2 \
+    python-dotenv==1.0.1
 
-# copy app code (including your pre-trained YOLO weights under /app/weights)
-COPY . .
+# ========= App code & static =========
+# Make sure your repo contains:
+# - app.py
+# - templates/index.html
+# - static/css/index.css
+# - static/js/index.js
+# - mongo/db_utils.py
+# - weights/best-ul-11l.pt  (your trained checkpoint)
+COPY . ./
 
-# ---- PRELOAD MODELS AT BUILD TIME ----
-# 1) Ensure YOLO can load your local weights (no net download needed)
-#    This just imports the model once so Ultralytics writes its settings file.
-RUN python - <<'PY'
-from ultralytics import YOLO
-from pathlib import Path
-w = Path('weights') / 'best-ul-11l.pt'  # keep this name to match app.py
-assert w.exists(), f"Missing weights at {w}"
-# Load once on CPU (this does NOT download anything if weights are local)
-_ = YOLO(str(w))
-print("YOLO weights present and loadable.")
-PY
+# ========= Verify weights exist (but DO NOT load them at build-time) =========
+RUN bash -lc 'test -f weights/best-ul-11l.pt || { echo "Missing weights/best-ul-11l.pt"; exit 1; }' \
+ && echo "Found weights/best-ul-11l.pt"
 
-# 2) Download EasyOCR detection/recognition models into /app/.easyocr
+# ========= Bake EasyOCR models into the image =========
 RUN python - <<'PY'
 import easyocr, os
-target = os.environ.get("EASYOCR_DIR", "/app/.easyocr")
-reader = easyocr.Reader(['en'], gpu=False, download_enabled=True,
-                        model_storage_directory=target)
-print("EasyOCR models downloaded to:", target)
+# This will download the detection/recognition models into EASYOCR_DIR
+easyocr.Reader(['en'], gpu=False, download_enabled=True,
+               model_storage_directory=os.environ.get('EASYOCR_DIR','/app/.easyocr'))
+print("EasyOCR models baked into image.")
 PY
 
-# expose port for Render
+# ========= Network =========
 EXPOSE 5000
 
-# gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "300", "--max-requests", "50", "--max-requests-jitter", "10","--preload", "app:app"]
+# ========= Runtime =========
+# --preload: import app early so import errors crash fast (YOLO loads lazily in your code)
+# --timeout: allow long video jobs
+# --max-requests* : recycle workers periodically to avoid memory bloat
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "600", "--max-requests", "100", "--max-requests-jitter", "20", "--preload", "app:app"]
