@@ -1,15 +1,16 @@
 FROM python:3.11-slim
 
-# Install system dependencies (minimal set)
+# Install system dependencies (minimal set for headless OpenCV)
 RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgomp1 \
-    libgl1-mesa-glx \
     libgthread-2.0-0 \
     libfontconfig1 \
+    libgl1-mesa-dev \
+    libglib2.0-dev \
     wget \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
